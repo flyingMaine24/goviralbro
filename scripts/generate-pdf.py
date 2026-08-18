@@ -26,20 +26,26 @@ except ImportError:
 
 
 def find_script(script_id: str, scripts_path: str) -> dict | None:
-    """Find a script by ID in the JSONL file."""
+    """Find a script by ID in the JSONL file. Handles both compact and pretty-printed entries."""
     if not os.path.exists(scripts_path):
         return None
     with open(scripts_path, "r") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                obj = json.loads(line)
-                if obj.get("id") == script_id:
-                    return obj
-            except json.JSONDecodeError:
-                continue
+        content = f.read()
+    decoder = json.JSONDecoder()
+    idx = 0
+    while idx < len(content):
+        remaining = content[idx:]
+        stripped = remaining.lstrip()
+        if not stripped:
+            break
+        offset = len(remaining) - len(stripped)
+        try:
+            obj, end = decoder.raw_decode(stripped)
+            if obj.get("id") == script_id:
+                return obj
+            idx += offset + end
+        except json.JSONDecodeError:
+            break
     return None
 
 
